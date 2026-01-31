@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HYTALE ATZEN | INTERNAL ACCESS</title>
-    <!-- Tailwind is used via CDN for static hosting compatibility as requested -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -13,9 +12,8 @@
         
         :root {
             --toxic: #39FF14;
-            --acid: #66FF3D;
             --bg: #0A0A0A;
-            --panel: #161616;
+            --panel: #111111;
             --muted: #4A4A4A;
             --error: #FF2E2E;
         }
@@ -24,16 +22,18 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
             color: #f8fafc;
-            letter-spacing: -0.02em;
             margin: 0;
             overflow-x: hidden;
-            background-attachment: fixed;
         }
 
         * { border-radius: 0 !important; }
 
-        .brutalist-border { border: 1px solid var(--muted); }
-        .brutalist-border-active { border: 2px solid var(--toxic); }
+        .hytale-bg {
+            background-image: linear-gradient(to bottom, rgba(10, 10, 10, 0.8), rgba(10, 10, 10, 0.95)), url('https://images.cgames.de/images/gamestar/287/hytale-wallpaper_6054988.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
 
         h1, h2, h3, h4, button {
             text-transform: uppercase;
@@ -52,8 +52,9 @@
         input:focus {
             border-color: var(--toxic) !important;
             outline: none;
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
         }
+
+        .toxic-shadow { box-shadow: 15px 15px 0px 0px rgba(57, 255, 20, 0.1); }
 
         /* Name Effects */
         .effect-gold {
@@ -73,84 +74,53 @@
 
         @keyframes rainbow_move { to { background-position: 200% center; } }
 
-        /* ADVANCED VISUALS */
-        .grid-bg {
-          position: fixed;
-          top: 0; left: 0; width: 200%; height: 200%;
-          background-image: 
-            linear-gradient(to right, rgba(57, 255, 20, 0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(57, 255, 20, 0.03) 1px, transparent 1px);
-          background-size: 40px 40px;
-          transform: perspective(500px) rotateX(60deg) translateY(-50%);
-          animation: grid-scroll 30s linear infinite;
-          z-index: -1;
-          pointer-events: none;
-        }
-
-        @keyframes grid-scroll {
-          0% { background-position: 0 0; }
-          100% { background-position: 0 480px; }
-        }
-
         .crt-overlay {
           position: fixed;
           top: 0; left: 0; width: 100%; height: 100%;
-          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-          background-size: 100% 3px, 3px 100%;
+          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+          background-size: 100% 3px;
           pointer-events: none;
           z-index: 999;
         }
 
-        .scanline {
-          position: fixed;
-          top: 0; left: 0; width: 100%; height: 2px;
-          background: rgba(57, 255, 20, 0.1);
-          opacity: 0.3;
-          z-index: 1000;
-          pointer-events: none;
-          animation: scanline 6s linear infinite;
-        }
-
-        @keyframes scanline { 0% { top: -10%; } 100% { top: 110%; } }
-
         @keyframes glitch {
           0% { transform: translate(0); }
-          10% { transform: translate(-2px, -1px); }
-          20% { transform: translate(-3px, 1px); }
-          30% { transform: translate(2px, 2px); }
-          40% { transform: translate(1px, -2px); }
-          50% { transform: translate(-1px, 1px); }
-          60% { transform: translate(-2px, -2px); }
+          20% { transform: translate(-2px, 1px); }
+          40% { transform: translate(-2px, -1px); }
+          60% { transform: translate(2px, 1px); }
+          80% { transform: translate(2px, -1px); }
           100% { transform: translate(0); }
         }
 
-        .glitch-on-hover:hover {
-          animation: glitch 0.2s steps(2) infinite;
+        .glitch-text:hover {
+          animation: glitch 0.3s steps(2) infinite;
           text-shadow: 2px 0 var(--error), -2px 0 var(--toxic);
         }
 
-        .terminal-text {
-            font-family: 'JetBrains Mono', monospace;
-        }
+        .terminal-text { font-family: 'JetBrains Mono', monospace; }
 
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--toxic); }
     </style>
 <script type="importmap">
 {
   "imports": {
     "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react": "https://esm.sh/react@^19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@^19.0.0/client",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0"
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 </head>
 <body class="bg-[#0A0A0A]">
-    <div class="grid-bg"></div>
     <div class="crt-overlay"></div>
-    <div class="scanline"></div>
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 </body>

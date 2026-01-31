@@ -1,24 +1,25 @@
-# HYTALE ATZEN | MOD CONTROL HUB
+# HYTALE ATZEN | INTERNES KONTROLLZENTRUM
 
-Dies ist das interne Portal für die Hytale Atzen Community. Hier werden Mod-Vorschläge gesammelt, gescannt und von den Membern demokratisch (aber hart) bewertet.
+![Hytale Atzen Banner](https://images.cgames.de/images/gamestar/287/hytale-wallpaper_6054988.jpg)
 
-## FEATURES
-- **Terminal Auth:** Sicherer Zugang für verifizierte Atzen.
-- **Auto-Scanner:** Unser Backend-Protokoll extrahiert Mod-Metadaten automatisch aus externen Links.
-- **Name-Styles:** Zeige deinen Status mit Gold- oder Rainbow-Names.
-- **Democratic Voting:** Upvote was gut ist, downvote den Rest.
-- **Local Persistence:** Alle Daten bleiben sicher in deinem Browser-Grid gespeichert.
+Willkommen im offiziellen Portal der **Hytale Atzen**. Dies ist kein Ort für Schwache. Hier koordinieren wir unsere Mods, stimmen über Server-Features ab und überwachen die Performance unserer Nodes.
 
-## INSTALLATION & DEPLOY
-1. Dateien in ein Root-Verzeichnis kopieren.
-2. API_KEY für den Scraper-Dienst in der Umgebung bereitstellen.
-3. Direkt auf GitHub Pages hosten (100% Statisch).
+## PROTOKOLL-ÜBERSICHT
+- **Zutrittsbeschränkung:** Nur verifizierte Atzen haben Zugriff auf die Datenbank.
+- **Mod-Sourcing:** Unsere automatisierten Protokolle scannen externe Quellen und bereiten die Daten für die Abstimmung auf.
+- **Demokratische Härte:** Jeder Atze hat eine Stimme. Was die Mehrheit ablehnt, fliegt raus.
+- **Verschlüsselung:** Alle lokalen Daten werden direkt im Browser-Grid gespeichert. Keine sensiblen Leaks.
 
-## ATZEN PROTOKOLL
-- Keine unnötigen Fragen.
-- Mod-Vorschläge müssen Hand und Fuß haben.
-- Der Scanner entscheidet über die Rohdaten, du entscheidest über den Vote.
-- Admin-Entscheidungen sind final.
+## SETUP FÜR ATZEN
+1. Klon das Repo in dein Root-Verzeichnis.
+2. Der **Access Token** für das Scanning-Modul wird über die interne `.env` bereitgestellt (wird niemals öffentlich committet).
+3. Hosting läuft über GitHub Pages (Statische Deployment-Stufe).
+
+## REGELN
+1. Wer spamt, fliegt.
+2. Wer Müll-Mods vorschlägt, fliegt.
+3. Support gibt es nicht. Friss oder stirb.
 
 ---
-*HYTALE ATZEN INTERNAL // SECURED // 2025*
+**STATUS: OPERATIONELL** // **VERSCHLÜSSELUNG: AKTIV** // **ACCESS: GRANTED**
+*HYTALE ATZEN INTERNAL // 2025*
