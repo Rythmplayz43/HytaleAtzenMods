@@ -10,11 +10,40 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [showContent, setShowContent] = useState(false);
+  const [booting, setBooting] = useState(true);
+  const [bootLogs, setBootLogs] = useState<string[]>([]);
+  const [glitchTitle, setGlitchTitle] = useState(false);
+
+  const LOGS = [
+    "> CONNECTING TO ATZEN_NET...",
+    "> BYPASSING HYTALE_SECURITY_PROTOCOL_v4...",
+    "> DECRYPTING USER_RECORDS...",
+    "> MOUNTING DATABASE /VOL/LOCAL_STORAGE",
+    "> AUTH_SERVICE: [OK]",
+    "> SYSTEM READY. STAND BY FOR ACCESS..."
+  ];
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowContent(true), 100);
-    return () => clearTimeout(timer);
+    let logIndex = 0;
+    const logInterval = setInterval(() => {
+      if (logIndex < LOGS.length) {
+        setBootLogs(prev => [...prev, LOGS[logIndex]]);
+        logIndex++;
+      } else {
+        clearInterval(logInterval);
+        setTimeout(() => setBooting(false), 500);
+      }
+    }, 400);
+
+    const glitchInterval = setInterval(() => {
+      setGlitchTitle(true);
+      setTimeout(() => setGlitchTitle(false), 150);
+    }, 4000);
+
+    return () => {
+      clearInterval(logInterval);
+      clearInterval(glitchInterval);
+    };
   }, []);
 
   const handleAuth = (e: React.FormEvent) => {
@@ -24,116 +53,116 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       displayName: name || email.split('@')[0], 
       email, 
       isAdmin: email.includes('admin'), 
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}` 
+      nameColor: '#39FF14',
+      nameEffect: 'none' as const
     };
     localStorage.setItem('hytale_user', JSON.stringify(mockUser));
     onLogin(mockUser);
   };
 
-  const handleGoogleLogin = () => {
-    const mockUser = { uid: 'g_123', displayName: 'ATZEN USER', email: 'user@gmail.com', isAdmin: false, avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=google' };
-    localStorage.setItem('hytale_user', JSON.stringify(mockUser));
-    onLogin(mockUser);
-  };
+  if (booting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-6 font-mono text-xs">
+        <div className="w-full max-w-lg border border-[#333] p-10 bg-[#000]">
+          <div className="space-y-2">
+            {bootLogs.map((log, i) => (
+              <div key={i} className="text-[#39FF14] animate-pulse">{log}</div>
+            ))}
+            <div className="w-2 h-4 bg-[#39FF14] animate-blink"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-6 relative overflow-hidden">
-      {/* Visual Overlays */}
-      <div className="noise-bg"></div>
-      <div className="scanlines"></div>
-      
-      {/* Background Ambience */}
-      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center opacity-10 pointer-events-none select-none">
-        <h1 className="text-[20vw] font-black tracking-tighter text-white/5 whitespace-nowrap">HYTALE ATZEN</h1>
-      </div>
-
-      <div className={`w-full max-w-md bg-[#161616] border-2 border-[#39FF14] p-10 shadow-[20px_20px_0px_0px_rgba(57,255,20,0.2)] relative z-10 transition-all duration-700 transform ${showContent ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-95'}`}>
+    <div className="min-h-screen flex items-center justify-center bg-transparent p-6 relative overflow-hidden">
+      <div className={`w-full max-w-md bg-[#161616] border-2 border-[#39FF14] p-10 shadow-[30px_30px_0px_0px_rgba(57,255,20,0.1)] relative z-10 animate-in fade-in zoom-in duration-500`}>
         
-        {/* Terminal Header Decor */}
-        <div className="absolute top-0 left-0 w-full flex justify-between px-4 py-1 border-b border-[#333] bg-black text-[8px] font-mono text-[#7A7A7A]">
-          <span>STATUS: WAITING_FOR_AUTH</span>
-          <span>SECURE_NODE_04</span>
+        {/* Decorative elements */}
+        <div className="absolute top-2 right-2 flex gap-1">
+          <div className="w-3 h-3 bg-[#333]"></div>
+          <div className="w-3 h-3 bg-[#333]"></div>
+          <div className="w-3 h-3 bg-[#39FF14] animate-pulse"></div>
         </div>
 
-        <div className="mt-4 mb-10 overflow-hidden">
-          <h1 className="text-4xl font-black text-[#39FF14] mb-2 leading-none tracking-tighter glitch-text cursor-default">
+        <div className="mb-10">
+          <h1 className={`text-5xl font-black text-[#39FF14] leading-none tracking-tighter mb-2 ${glitchTitle ? 'glitch-active' : ''}`}>
             HYTALE ATZEN
           </h1>
-          <div className="h-0.5 bg-[#39FF14] w-full origin-left transition-all duration-1000" style={{ transform: showContent ? 'scaleX(1)' : 'scaleX(0)' }}></div>
-          <p className="text-[#7A7A7A] text-[10px] font-bold uppercase tracking-widest mt-2 flicker">
-            {isRegister ? ':: INITIALIZING_NEW_ENTITY' : ':: ACCESS_PROTOCOL_LOADED'}
+          <p className="text-[#7A7A7A] text-[9px] font-bold uppercase tracking-[0.4em] italic typewriter">
+            {isRegister ? 'IDENTITY_GEN_MODULE' : 'ACCESS_TERMINAL_V.2.0'}
           </p>
         </div>
 
-        <div className={`space-y-8 transition-all duration-1000 delay-300 ${showContent ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
+        <div className="space-y-8">
           <button 
-            onClick={handleGoogleLogin}
-            className="group w-full flex items-center justify-center gap-3 bg-white text-black py-4 font-black hover:bg-[#39FF14] transition-all relative overflow-hidden"
+            onClick={() => onLogin({ uid: 'g_123', displayName: 'ATZEN USER', email: 'user@gmail.com', isAdmin: false })}
+            className="group w-full relative h-14 bg-white hover:bg-[#39FF14] transition-colors duration-300 flex items-center justify-center font-black text-black"
           >
-            <span className="relative z-10">GOOGLE LOGIN</span>
-            <div className="absolute inset-0 bg-[#39FF14] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="relative z-10">GOOGLE_SIGN_IN</span>
+            <div className="absolute inset-0 border-4 border-black translate-x-1 translate-y-1 -z-0 group-active:translate-x-0 group-active:translate-y-0 transition-transform"></div>
           </button>
 
-          <div className="relative h-px bg-[#333]">
-            <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#161616] px-4 text-[10px] font-black text-[#7A7A7A]">OR_USE_MANUAL</span>
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#333]"></div></div>
+            <div className="relative flex justify-center"><span className="bg-[#161616] px-4 text-[9px] font-black text-[#7A7A7A] uppercase tracking-widest">ENCRYPTED_AUTH</span></div>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-6">
             {isRegister && (
-              <div className="animate-in slide-in-from-left duration-300">
-                <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-2 block tracking-widest">ATZEN_NAME</label>
+              <div className="animate-in slide-in-from-right duration-300">
+                <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-1 block">DISPLAY_NAME</label>
                 <input 
                   type="text" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full p-4 text-white text-sm border border-[#333] focus:border-[#39FF14] transition-colors"
+                  className="w-full bg-black border border-[#333] text-[#39FF14] p-4 text-sm font-bold focus:border-[#39FF14] outline-none"
                   required
                 />
               </div>
             )}
-            <div className="animate-in slide-in-from-left duration-500">
-              <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-2 block tracking-widest">EMAIL_ADDRESS</label>
+            <div className="animate-in slide-in-from-right duration-500">
+              <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-1 block">EMAIL_ID</label>
               <input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-4 text-white text-sm border border-[#333] focus:border-[#39FF14] transition-colors"
+                className="w-full bg-black border border-[#333] text-[#39FF14] p-4 text-sm font-bold focus:border-[#39FF14] outline-none"
                 required
               />
             </div>
-            <div className="animate-in slide-in-from-left duration-700">
-              <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-2 block tracking-widest">PASSWORD_KEY</label>
+            <div className="animate-in slide-in-from-right duration-700">
+              <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-1 block">PASSPHRASE</label>
               <input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-4 text-white text-sm border border-[#333] focus:border-[#39FF14] transition-colors"
+                className="w-full bg-black border border-[#333] text-[#39FF14] p-4 text-sm font-bold focus:border-[#39FF14] outline-none"
                 required
               />
             </div>
-            <button className="w-full bg-[#39FF14] text-black py-4 font-black hover:bg-white transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent hover:border-black">
-              {isRegister ? 'GENERATE_IDENTITY' : 'INITIATE_LOGIN'}
+
+            <button className="w-full h-16 bg-[#39FF14] text-black font-black text-lg hover:bg-white transition-all transform hover:-translate-y-1 active:translate-y-0 toxic-shadow">
+              {isRegister ? 'EXECUTE_REGISTRATION' : 'START_SESSION'}
             </button>
           </form>
 
-          <div className="pt-6 border-t border-[#333] text-center">
+          <div className="text-center pt-4 border-t border-[#333]">
             <button 
               onClick={() => setIsRegister(!isRegister)}
-              className="text-[10px] font-black text-[#7A7A7A] hover:text-[#39FF14] transition-colors uppercase tracking-tighter"
+              className="text-[10px] font-bold text-[#7A7A7A] hover:text-[#39FF14] transition-colors flex items-center justify-center gap-2 mx-auto"
             >
-              {isRegister ? '> BACK_TO_LOGIN' : '> CREATE_NEW_RECORD'}
+              <span className="w-1.5 h-1.5 bg-[#333] group-hover:bg-[#39FF14]"></span>
+              {isRegister ? 'SWITCH_TO_LOGIN' : 'REGISTER_NEW_ENTITY'}
             </button>
           </div>
         </div>
 
-        {/* Footer Decor */}
-        <div className="mt-10 flex justify-between items-center opacity-20 grayscale">
-          <div className="flex gap-2">
-            <div className="w-2 h-2 bg-[#39FF14] animate-pulse"></div>
-            <div className="w-2 h-2 bg-[#39FF14] animate-pulse delay-75"></div>
-            <div className="w-2 h-2 bg-[#39FF14] animate-pulse delay-150"></div>
-          </div>
-          <span className="text-[8px] font-mono">ENCRYPTED_VTX_2048</span>
+        {/* Binary decor at bottom */}
+        <div className="mt-8 flex justify-between items-center overflow-hidden h-4 text-[7px] text-[#333] font-mono whitespace-nowrap opacity-50 select-none">
+          <span>01100001 01110100 01111010 01100101 01101110</span>
+          <span>11011100 01100011 01011001 01100001</span>
         </div>
       </div>
     </div>
