@@ -1,0 +1,7 @@
+{
+  "name": "Hytale Atzen Hub",
+  "description": "Hardcore Hytale community mod voting platform. Static, brutal, and raw.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
