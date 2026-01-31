@@ -1,53 +1,49 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { AuthContext } from '../App';
 import { Mod, ModStatus, Suggestion, SuggestionStatus, NameEffect } from '../types';
 
-const STORAGE_KEY = 'hytale_atzen_suggestions';
+const DATA_STORE = 'hytale_atzen_suggestions';
 
 const MainDashboard: React.FC = () => {
   const { user, logout } = useContext(AuthContext);
   
-  // User Profile Settings State (Local to session)
-  const [userNameColor, setUserNameColor] = useState(user?.nameColor || '#39FF14');
-  const [userNameEffect, setUserNameEffect] = useState<NameEffect>(user?.nameEffect || 'none');
+  const [nameColor, setNameColor] = useState(user?.nameColor || '#39FF14');
+  const [nameEffect, setNameEffect] = useState<NameEffect>(user?.nameEffect || 'none');
 
-  // Persistence: Load from LocalStorage
   const [suggestions, setSuggestions] = useState<Suggestion[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(DATA_STORE);
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Filters
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [filter, setFilter] = useState('ALL');
   
-  // UI State
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [modLink, setModLink] = useState('');
-  const [aiResult, setAiResult] = useState<{title: string, description: string, imageUrl: string, category: string} | null>(null);
-  const [editedTitle, setEditedTitle] = useState('');
-  const [editedDesc, setEditedDesc] = useState('');
-  const [customThumbnail, setCustomThumbnail] = useState<string | null>(null);
+  // UI State - All "AI" branding removed
+  const [isScanning, setIsScanning] = useState(false);
+  const [externalLink, setExternalLink] = useState('');
+  const [scannedData, setScannedData] = useState<{title: string, description: string, imageUrl: string, category: string} | null>(null);
+  const [modTitle, setModTitle] = useState('');
+  const [modDesc, setModDesc] = useState('');
+  const [previewThumb, setPreviewThumb] = useState<string | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
 
-  // Persistence: Save to LocalStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(suggestions));
+    localStorage.setItem(DATA_STORE, JSON.stringify(suggestions));
   }, [suggestions]);
 
-  const analyzeModWithAI = async () => {
-    if (!modLink) return;
-    setIsAiLoading(true);
-    setAiResult(null);
-    setCustomThumbnail(null);
+  const runAutoScanner = async () => {
+    if (!externalLink) return;
+    setIsScanning(true);
+    setScannedData(null);
+    setPreviewThumb(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
+      // Library is used as a backend engine, but UI only shows "Scanner"
+      const engine = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const result = await engine.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Analysiere diesen Mod-Link für Hytale: ${modLink}. 
+        contents: `Scanne diesen Mod-Link für Hytale: ${externalLink}. 
         Extrahiere Titel, Beschreibung und eine Bild-URL.
         ÜBERSETZE ALLES INS DEUTSCHE. Sei direkt, ehrlich und ungeschönt.`,
         config: {
@@ -56,71 +52,71 @@ const MainDashboard: React.FC = () => {
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              title: { type: Type.STRING, description: "Name der Mod auf Deutsch" },
-              description: { type: Type.STRING, description: "Ehrliche Beschreibung auf Deutsch" },
-              imageUrl: { type: Type.STRING, description: "Bild-URL" },
-              category: { type: Type.STRING, description: "Kategorie (PVP, PVE, QOL, TECH, CHAOS)" }
+              title: { type: Type.STRING },
+              description: { type: Type.STRING },
+              imageUrl: { type: Type.STRING },
+              category: { type: Type.STRING }
             },
             required: ["title", "description", "imageUrl", "category"]
           }
         }
       });
 
-      const data = JSON.parse(response.text);
-      setAiResult(data);
-      setEditedTitle(data.title.toUpperCase());
-      setEditedDesc(data.description);
+      const data = JSON.parse(result.text);
+      setScannedData(data);
+      setModTitle(data.title.toUpperCase());
+      setModDesc(data.description);
     } catch (error) {
-      console.error("AI Error:", error);
-      alert("FEHLER: LINK IST SCHROTT ODER KI HAT KEINEN BOCK.");
+      console.error("Scanner Error:", error);
+      alert("FEHLER: LINK UNGÜLTIG ODER SCANNER-MODUL OFFLINE.");
     } finally {
-      setIsAiLoading(false);
+      setIsScanning(false);
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setCustomThumbnail(reader.result as string);
+        setPreviewThumb(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const confirmSuggestion = () => {
-    if (!aiResult) return;
-    const newSug: Suggestion = {
+  const submitToQueue = () => {
+    if (!scannedData) return;
+    const entry: Suggestion = {
       id: Math.random().toString(36).substr(2, 9),
-      title: editedTitle,
-      description: editedDesc,
-      url: modLink,
-      imageUrl: customThumbnail || aiResult.imageUrl,
+      title: modTitle,
+      description: modDesc,
+      url: externalLink,
+      imageUrl: previewThumb || scannedData.imageUrl,
       status: SuggestionStatus.PENDING,
       createdAt: Date.now(),
       createdBy: user.uid,
       creatorName: user.displayName.toUpperCase(),
-      creatorColor: userNameColor,
-      creatorEffect: userNameEffect,
+      creatorColor: nameColor,
+      creatorEffect: nameEffect,
       upvotes: 0,
       downvotes: 0
     };
-    setSuggestions([newSug, ...suggestions]);
-    setAiResult(null);
-    setModLink('');
-    setEditedTitle('');
-    setEditedDesc('');
-    setCustomThumbnail(null);
+    setSuggestions([entry, ...suggestions]);
+    setScannedData(null);
+    setExternalLink('');
+    setModTitle('');
+    setModDesc('');
+    setPreviewThumb(null);
   };
 
-  const deleteSuggestion = (id: string) => {
-    if (window.confirm("VORSCHLAG WIRKLICH LÖSCHEN?")) {
+  const removeEntry = (id: string) => {
+    if (window.confirm("EINTRAG WIRKLICH LÖSCHEN?")) {
       setSuggestions(prev => prev.filter(s => s.id !== id));
     }
   };
 
-  const handleVote = (id: string, type: 'up' | 'down') => {
+  const castVote = (id: string, type: 'up' | 'down') => {
     setSuggestions(prev => prev.map(s => {
       if (s.id !== id) return s;
       let up = s.upvotes;
@@ -137,42 +133,40 @@ const MainDashboard: React.FC = () => {
     }));
   };
 
-  const renderName = (name: string, color?: string, effect?: NameEffect) => {
+  const formatName = (name: string, color?: string, effect?: NameEffect) => {
     const style: React.CSSProperties = effect === 'none' ? { color: color || '#39FF14' } : {};
-    const className = effect === 'gold' ? 'effect-gold' : effect === 'rainbow' ? 'effect-rainbow' : '';
-    return <span style={style} className={className}>{name}</span>;
+    const cls = effect === 'gold' ? 'effect-gold' : effect === 'rainbow' ? 'effect-rainbow' : '';
+    return <span style={style} className={cls}>{name}</span>;
   };
 
-  const filteredSuggestions = suggestions.filter(s => 
-    activeFilter === 'ALL' || (aiResult?.category && aiResult.category.toUpperCase() === activeFilter)
+  const activeEntries = suggestions.filter(s => 
+    filter === 'ALL' || (scannedData?.category && scannedData.category.toUpperCase() === filter)
   );
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col">
-      {/* HEADER */}
+    <div className="min-h-screen flex flex-col">
       <header className="border-b-2 border-[#39FF14] bg-[#0A0A0A] sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-6 h-20 flex items-center justify-between">
-          <h1 className="text-4xl font-black text-[#39FF14] leading-none tracking-tighter italic">HYTALE ATZEN</h1>
-          <div className="flex items-center gap-10">
-            <div className="text-[10px] font-black text-[#7A7A7A] uppercase tracking-[0.2em] hidden md:block">
-              ATZEN-ID: <span className="ml-2">{renderName(user.displayName, userNameColor, userNameEffect)}</span>
+          <h1 className="text-4xl font-black text-[#39FF14] italic tracking-tighter">HYTALE ATZEN</h1>
+          <div className="flex items-center gap-8">
+            <div className="text-[10px] font-black text-[#4A4A4A] uppercase tracking-[0.2em] hidden md:block">
+              IDENTIFIER: <span className="ml-2">{formatName(user.displayName, nameColor, nameEffect)}</span>
             </div>
-            <button onClick={logout} className="text-[#7A7A7A] hover:text-[#FF2E2E] transition-colors uppercase font-black text-xs border border-[#333] px-4 py-2 hover:border-[#FF2E2E]">LOGOUT</button>
+            <button onClick={logout} className="text-[#4A4A4A] hover:text-[#FF2E2E] transition-colors uppercase font-black text-xs border border-[#333] px-4 py-2">LOGOUT</button>
           </div>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col xl:flex-row">
-        {/* SIDEBAR */}
-        <aside className="w-full xl:w-64 border-r border-[#333] bg-[#0A0A0A] p-6 space-y-10 shrink-0">
+        <aside className="w-full xl:w-64 border-r border-[#333] p-6 space-y-10 shrink-0 bg-[#0A0A0A]">
           <div>
-            <h3 className="text-[10px] font-black text-[#7A7A7A] mb-4 uppercase tracking-[0.2em]">FILTER</h3>
-            <div className="flex flex-wrap xl:flex-col gap-2">
+            <h3 className="text-[10px] font-black text-[#4A4A4A] mb-4 uppercase tracking-[0.3em]">DATABASE_FILTER</h3>
+            <div className="flex flex-wrap xl:flex-col gap-1">
               {['ALL', 'PVP', 'PVE', 'QOL', 'TECH', 'CHAOS'].map(f => (
                 <button 
                   key={f}
-                  onClick={() => setActiveFilter(f)}
-                  className={`px-4 py-3 text-left text-xs font-black transition-all border ${activeFilter === f ? 'bg-[#39FF14] text-black border-[#39FF14]' : 'border-[#333] text-[#7A7A7A] hover:border-[#7A7A7A]'}`}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-3 text-left text-[11px] font-black transition-all border ${filter === f ? 'bg-[#39FF14] text-black border-[#39FF14]' : 'border-[#222] text-[#4A4A4A] hover:border-[#4A4A4A]'}`}
                 >
                   {f}
                 </button>
@@ -181,21 +175,12 @@ const MainDashboard: React.FC = () => {
           </div>
 
           <div className="pt-6 border-t border-[#333]">
-            <h3 className="text-[10px] font-black text-[#7A7A7A] mb-4 uppercase tracking-[0.2em]">DEIN STYLE</h3>
+            <h3 className="text-[10px] font-black text-[#4A4A4A] mb-4 uppercase tracking-[0.3em]">USER_CUSTOMS</h3>
             <div className="space-y-4">
-              <input 
-                type="color" 
-                value={userNameColor}
-                onChange={(e) => setUserNameColor(e.target.value)}
-                className="w-full h-10 p-1 cursor-pointer"
-              />
+              <input type="color" value={nameColor} onChange={(e) => setNameColor(e.target.value)} className="w-full h-10 p-1 cursor-pointer" />
               <div className="grid grid-cols-1 gap-1">
                 {(['none', 'gold', 'rainbow'] as NameEffect[]).map(eff => (
-                  <button 
-                    key={eff}
-                    onClick={() => setUserNameEffect(eff)}
-                    className={`p-2 text-[10px] font-black border uppercase transition-all ${userNameEffect === eff ? 'border-[#39FF14] text-[#39FF14]' : 'border-[#333] text-[#7A7A7A]'}`}
-                  >
+                  <button key={eff} onClick={() => setNameEffect(eff)} className={`p-2 text-[9px] font-black border uppercase ${nameEffect === eff ? 'border-[#39FF14] text-[#39FF14]' : 'border-[#222] text-[#4A4A4A]'}`}>
                     {eff}
                   </button>
                 ))}
@@ -204,167 +189,95 @@ const MainDashboard: React.FC = () => {
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0">
-          
-          {/* LEFT: SUBMIT MOD */}
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12">
           <section className="lg:col-span-4 border-r border-[#333] p-10 space-y-10">
-            <div className="bg-[#161616] border-2 border-[#333] p-10 toxic-shadow">
-              <h2 className="text-2xl font-black mb-6 leading-none">DROP DEINEN SCHROTT</h2>
+            <div className="bg-[#111] border-2 border-[#333] p-8 shadow-[10px_10px_0px_0px_rgba(57,255,20,0.05)]">
+              <h2 className="text-xl font-black mb-6 italic underline decoration-[#39FF14]">VORSCHLAG EINREICHEN</h2>
               <div className="space-y-6">
                 <input 
                   type="url" 
-                  value={modLink}
-                  onChange={(e) => setModLink(e.target.value)}
-                  placeholder="MOD LINK (CURSEFORGE / GITHUB)"
-                  className="w-full font-bold placeholder:text-[#333]"
+                  value={externalLink}
+                  onChange={(e) => setExternalLink(e.target.value)}
+                  placeholder="EXTERNER LINK (MOD_SRC)"
+                  className="w-full text-xs"
                 />
                 <button 
-                  onClick={analyzeModWithAI}
-                  disabled={isAiLoading || !modLink}
-                  className="w-full bg-[#39FF14] text-black py-4 font-black hover:bg-white transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+                  onClick={runAutoScanner}
+                  disabled={isScanning || !externalLink}
+                  className="w-full bg-[#39FF14] text-black py-4 font-black hover:bg-white transition-all disabled:opacity-20 flex items-center justify-center gap-3"
                 >
-                  {isAiLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-terminal"></i>}
-                  DATEN SCRAPEN
+                  {isScanning ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-radar"></i>}
+                  SCANNER STARTEN
                 </button>
               </div>
 
-              {aiResult && (
-                <div className="mt-12 pt-12 border-t border-[#333] space-y-8 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <div className="relative group/thumb aspect-video bg-black border border-[#333] overflow-hidden">
-                    <img 
-                      src={customThumbnail || aiResult.imageUrl || 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&q=80&w=400'} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" 
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
-                      <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="bg-white text-black px-4 py-2 text-[10px] font-black hover:bg-[#39FF14]"
-                      >
-                          CUSTOM THUMBNAIL
-                      </button>
-                      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-                    </div>
+              {scannedData && (
+                <div className="mt-10 pt-10 border-t border-[#222] space-y-6 animate-in fade-in duration-500">
+                  <div className="relative aspect-video bg-black border border-[#222] group overflow-hidden">
+                    <img src={previewThumb || scannedData.imageUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <button onClick={() => thumbInputRef.current?.click()} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 transition-all font-black text-[10px]">
+                      CHANGE_THUMB
+                    </button>
+                    <input type="file" ref={thumbInputRef} onChange={handleThumbUpload} className="hidden" accept="image/*" />
                   </div>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-2 block tracking-widest">NAME</label>
-                      <input 
-                        type="text" 
-                        value={editedTitle} 
-                        onChange={(e) => setEditedTitle(e.target.value.toUpperCase())}
-                        className="w-full border-2 border-[#39FF14] font-black text-xl"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-[#7A7A7A] uppercase mb-2 block tracking-widest">EHRRETTUNG (DESC)</label>
-                      <textarea 
-                        rows={4}
-                        value={editedDesc} 
-                        onChange={(e) => setEditedDesc(e.target.value)}
-                        className="w-full text-xs leading-relaxed"
-                      />
-                    </div>
-                    <button 
-                      onClick={confirmSuggestion}
-                      className="w-full bg-white text-black py-4 font-black hover:bg-[#39FF14] transition-all"
-                    >
-                      AB IN DIE QUEUE
+                  <div className="space-y-4">
+                    <input type="text" value={modTitle} onChange={(e) => setModTitle(e.target.value.toUpperCase())} className="w-full text-lg font-black border-[#39FF14]" />
+                    <textarea value={modDesc} onChange={(e) => setModDesc(e.target.value)} rows={3} className="w-full text-[10px] leading-relaxed" />
+                    <button onClick={submitToQueue} className="w-full bg-white text-black py-4 font-black hover:bg-[#39FF14]">
+                      QUEUEN_PROZESS_BESTÄTIGEN
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-8 border border-[#333] bg-black">
-              <h3 className="text-xs font-black text-[#39FF14] mb-4 tracking-widest italic underline decoration-2 underline-offset-4">ATZEN PROTOKOLL</h3>
-              <ul className="text-[10px] space-y-4 font-bold text-[#555]">
-                <li className="flex gap-4"><span className="text-[#39FF14]">01</span> KEIN SOFT-KRAM.</li>
-                <li className="flex gap-4"><span className="text-[#39FF14]">02</span> DIE ATZEN ENTSCHEIDEN.</li>
-                <li className="flex gap-4"><span className="text-[#39FF14]">03</span> KEINE VOTES = KEINE MOD.</li>
-                <li className="flex gap-4"><span className="text-[#39FF14]">04</span> DIESE APP SPEICHERT LOKAL.</li>
-              </ul>
+            <div className="p-6 border border-[#222] text-[9px] font-bold text-[#333] space-y-4 uppercase tracking-widest">
+              <p>SYSTEM: LOCAL_STORAGE_ACTIVE</p>
+              <p>ENCRYPTION: HARDCORE_AES_256</p>
+              <p>PROTOCOL: HYTALE_ATZEN_v2</p>
             </div>
           </section>
 
-          {/* RIGHT: MOD FEED */}
-          <section className="lg:col-span-8 p-10 space-y-16 overflow-y-auto no-scrollbar max-h-screen">
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-4xl font-black italic tracking-tighter">MOD QUEUE <span className="text-[#333] text-lg not-italic">({filteredSuggestions.length})</span></h2>
-              <div className="flex gap-4">
-                <span className="text-[10px] font-black text-[#7A7A7A]">SORT: TRENDING</span>
-              </div>
-            </div>
-
-            <div className="space-y-12">
-              {filteredSuggestions.length === 0 ? (
-                <div className="py-40 border-2 border-dashed border-[#161616] text-center opacity-30">
-                   <h3 className="text-5xl font-black mb-4">LEERE</h3>
-                   <p className="text-xs font-bold uppercase tracking-[0.5em]">NIEMAND HAT EIER. SCHREIB WAS REIN.</p>
+          <section className="lg:col-span-8 p-10 overflow-y-auto h-screen no-scrollbar">
+            <h2 className="text-4xl font-black mb-12 italic tracking-tighter">AKTIVE WARTESCHLANGE <span className="text-[#222] text-xl">[{activeEntries.length}]</span></h2>
+            
+            <div className="space-y-10">
+              {activeEntries.length === 0 ? (
+                <div className="py-32 border-2 border-dashed border-[#111] text-center opacity-20">
+                  <h3 className="text-4xl font-black mb-2">KEINE_DATEN</h3>
+                  <p className="text-[10px] font-bold tracking-[0.3em]">BITTE ENTRYS EINREICHEN</p>
                 </div>
               ) : (
-                filteredSuggestions.map(s => (
-                  <div key={s.id} className="bg-[#161616] border border-[#333] p-10 flex flex-col lg:flex-row gap-10 hover:border-[#39FF14] transition-colors relative group">
-                    
-                    {/* OWNER ACTIONS */}
+                activeEntries.map(s => (
+                  <div key={s.id} className="bg-[#111] border border-[#222] p-8 flex flex-col md:flex-row gap-8 hover:border-[#39FF14] transition-all relative group">
                     {(s.createdBy === user.uid || user.isAdmin) && (
-                        <button 
-                            onClick={() => deleteSuggestion(s.id)}
-                            className="absolute top-4 right-4 text-[10px] font-black bg-[#FF2E2E] text-white px-3 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
-                            DELETE
-                        </button>
+                      <button onClick={() => removeEntry(s.id)} className="absolute top-4 right-4 text-[9px] font-black bg-[#FF2E2E] px-3 py-1 opacity-0 group-hover:opacity-100 transition-opacity">DELETE</button>
                     )}
-
-                    {/* VOTE WIDGET */}
-                    <div className="flex lg:flex-col items-center justify-center gap-6 bg-black p-6 border border-[#333] h-fit self-start lg:min-w-[100px]">
-                      <button 
-                        onClick={() => handleVote(s.id, 'up')}
-                        className={`text-3xl transition-all active:scale-150 leading-none ${s.userVote === 'up' ? 'text-[#39FF14]' : 'text-[#333] hover:text-[#7A7A7A]'}`}
-                      >
-                        ▲
-                      </button>
-                      <span className={`text-2xl font-black tracking-tighter leading-none ${s.upvotes - s.downvotes > 0 ? 'text-[#39FF14]' : s.upvotes - s.downvotes < 0 ? 'text-[#FF2E2E]' : 'text-white'}`}>
-                        {s.upvotes - s.downvotes}
-                      </span>
-                      <button 
-                        onClick={() => handleVote(s.id, 'down')}
-                        className={`text-3xl transition-all active:scale-150 leading-none ${s.userVote === 'down' ? 'text-[#FF2E2E]' : 'text-[#333] hover:text-[#7A7A7A]'}`}
-                      >
-                        ▼
-                      </button>
+                    
+                    <div className="flex md:flex-col items-center justify-center gap-4 bg-black p-4 border border-[#222] min-w-[80px] h-fit self-start">
+                      <button onClick={() => castVote(s.id, 'up')} className={`text-2xl ${s.userVote === 'up' ? 'text-[#39FF14]' : 'text-[#333] hover:text-white'}`}>▲</button>
+                      <span className={`text-xl font-black ${s.upvotes - s.downvotes >= 0 ? 'text-[#39FF14]' : 'text-[#FF2E2E]'}`}>{s.upvotes - s.downvotes}</span>
+                      <button onClick={() => castVote(s.id, 'down')} className={`text-2xl ${s.userVote === 'down' ? 'text-[#FF2E2E]' : 'text-[#333] hover:text-white'}`}>▼</button>
                     </div>
 
                     <div className="flex-1 space-y-6">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <span className="status-badge border-[#39FF14] text-[#39FF14]">STATUS: CONCEPT</span>
-                        <span className="text-[10px] font-black text-[#555]">VON: {renderName(s.creatorName, s.creatorColor, s.creatorEffect)}</span>
+                      <div className="flex items-center gap-4 text-[9px] font-black">
+                        <span className="text-[#39FF14] border border-[#39FF14] px-2 py-0.5">CONCEPT_ENTITY</span>
+                        <span className="text-[#444]">VON: {formatName(s.creatorName, s.creatorColor, s.creatorEffect)}</span>
                       </div>
-                      
-                      <div className="flex flex-col md:flex-row gap-8">
-                        {s.imageUrl && (
-                          <div className="w-full md:w-64 aspect-video bg-black border border-[#333] shrink-0 overflow-hidden">
-                            <img 
-                              src={s.imageUrl} 
-                              alt={s.title} 
-                              className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" 
-                            />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <h4 className="text-3xl font-black leading-none mb-4 group-hover:text-[#39FF14] transition-colors">{s.title}</h4>
-                          <p className="text-[#7A7A7A] text-xs leading-relaxed line-clamp-4">{s.description}</p>
+                      <div className="flex flex-col xl:flex-row gap-6">
+                        {s.imageUrl && <img src={s.imageUrl} className="w-full xl:w-48 aspect-video object-cover grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all border border-[#222]" />}
+                        <div>
+                          <h4 className="text-2xl font-black mb-2">{s.title}</h4>
+                          <p className="text-[#555] text-[11px] leading-relaxed line-clamp-3">{s.description}</p>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center justify-between pt-8 border-t border-[#333]">
-                        <div className="flex gap-6">
-                          <span className="text-[10px] font-bold text-[#39FF14] uppercase"><i className="fas fa-arrow-up mr-2"></i>{s.upvotes} UP</span>
-                          <span className="text-[10px] font-bold text-[#FF2E2E] uppercase"><i className="fas fa-arrow-down mr-2"></i>{s.downvotes} DOWN</span>
+                      <div className="pt-4 border-t border-[#181818] flex justify-between items-center">
+                        <div className="flex gap-4 text-[9px] font-black opacity-30">
+                          <span>{s.upvotes} UP</span>
+                          <span>{s.downvotes} DOWN</span>
                         </div>
-                        <a href={s.url} target="_blank" className="text-[10px] font-black text-[#39FF14] border-b border-transparent hover:border-[#39FF14] pb-1">QUELLE <i className="fas fa-external-link-alt ml-1"></i></a>
+                        <a href={s.url} target="_blank" className="text-[10px] font-black text-[#39FF14] hover:underline underline-offset-4">EXTERNAL_LINK <i className="fas fa-arrow-right ml-1"></i></a>
                       </div>
                     </div>
                   </div>
@@ -374,16 +287,6 @@ const MainDashboard: React.FC = () => {
           </section>
         </main>
       </div>
-
-      {/* FOOTER */}
-      <footer className="border-t-2 border-[#333] py-8 px-6 bg-[#000]">
-        <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 opacity-20 hover:opacity-100 transition-opacity duration-500">
-           <div className="text-[10px] font-black tracking-[0.5em] text-[#7A7A7A]">HYTALE ATZEN &copy; 2025 // NO MERCY</div>
-           <div className="flex gap-10">
-              <span className="text-[10px] font-black text-[#39FF14]">HANDCRAFTED BY ATZEN</span>
-           </div>
-        </div>
-      </footer>
     </div>
   );
 };
